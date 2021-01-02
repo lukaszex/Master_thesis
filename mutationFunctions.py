@@ -6,7 +6,7 @@ def getMutPoints(length):
     mutpoint1 = min(gene1, gene2)
     mutpoint2 = max(gene1, gene2)
     if mutpoint2 == mutpoint1:
-        if mutpoint2 < length:
+        if mutpoint2 < length - 1:
             mutpoint2 += 1
         else:
             mutpoint1 -= 1

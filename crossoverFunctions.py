@@ -66,4 +66,4 @@ def crossoverCX(parent1, parent2):
 
 
 if __name__ == '__main__':
-    crossoverOX([1, 2, 3, 4, 5, 6, 7], [4, 3, 6, 7, 5, 2, 1])
+    print(crossoverCX([4, 3, 6, 7, 5, 2, 1], [1, 2, 3, 4, 5, 6, 7]))
