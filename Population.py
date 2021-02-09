@@ -152,8 +152,14 @@ class Population:
                 length += calculateDistance(self.cities[self.specimen.iloc[i, 0][j]], self.cities[self.specimen.iloc[i, 0][destCityIndex]])
                 self.specimen.iloc[i, -1] = length
         self.specimen.sort_values(by = 'fitness', inplace = True)
-        print('Generation: {}, best fitness: {}'.format(self.generationNumber, self.specimen.iloc[0, -1]))
+        print('Population: {}. generation: {}, best fitness: {}'.format(self.populationID, self.generationNumber, self.specimen.iloc[0, -1]))
         pass
+
+    def processPopulation(self):
+        self.selectParents()
+        self.crossover()
+        self.mutate()
+        self.evaluate()
 
     def evaluateSingleSpeciman(self, speciman):
         length = 0
@@ -172,10 +178,7 @@ if __name__ == '__main__':
     pop.createInitialPopulation()
     pop.evaluate()
     for it in range(1, 50):
-        pop.selectParents()
-        pop.crossover()
-        pop.mutate()
-        pop.evaluate()
+        pop.processPopulation()
         pop = Population(0, it, cities_, 50, 'normal', 5, 0.05, 10, 4, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff, pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
                          pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
     print('PMX: {}, OX: {}, CX: {}, swap: {}, insert: {}, scramble: {}, inversion: {}'.format(pop.pmxEff/pop.pmx,
