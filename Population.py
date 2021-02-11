@@ -155,11 +155,16 @@ class Population:
         print('Population: {}. generation: {}, best fitness: {}'.format(self.populationID, self.generationNumber, self.specimen.iloc[0, -1]))
         pass
 
-    def processPopulation(self):
+    def processPopulation(self, retDict):
         self.selectParents()
         self.crossover()
         self.mutate()
         self.evaluate()
+        retDict[self.populationID] = self
+
+    def selectSpecimenForMigration(self):
+        self.migrating = self.specimen.sample(self.migrationSize)
+        self.specimen.drop(self.migrating.index, inplace = True)
 
     def evaluateSingleSpeciman(self, speciman):
         length = 0
