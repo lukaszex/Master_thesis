@@ -1,8 +1,11 @@
 from Population import *
 import multiprocessing as mp
+from matplotlib import pyplot as plt
+import sys
+import datetime
 
 class Algorithm:
-    def __init__(self, type_, topology_, migrationFrequency_, migrationSize_):
+    def __init__(self, type_, topology_, migrationFrequency_, migrationSize_, cities_, numberOfGenerations_):
         self.type = type_
         self.generationNumber = 0
         if topology_ == '1wayCircle':
@@ -19,12 +22,17 @@ class Algorithm:
             self.topology = {0: 4, 1: 4, 2: 5, 3: 5, 4: 6, 5: 6}
         self.migrationFrequency = migrationFrequency_
         self.migrationSize = migrationSize_
-
-    def initialize(self, cities_):
+        self.cities = cities_
+        self.numberOfGenerations = numberOfGenerations_
         self.populations = []
+        self.stats = []
+        for popID in range(8):
+            self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': []})
+
+    def initialize(self):
         if self.type == 'normal':
             for popNumber in range(8):
-                pop = Population(popNumber, 0, cities_, 50, 'normal', 5, 0.05, 10, 4, None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                pop = Population(popNumber, 0, self.cities, 50, 'normal', 5, 0.05, 10, self.migrationSize, None)
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
@@ -59,20 +67,48 @@ class Algorithm:
             targetIDs = list(self.topology[ID])
             splittedMigrating = np.array_split(pop.migrating, len(targetIDs))
             i = 0
-            for ID in targetIDs:
-                self.populations[ID].specimen = self.populations[ID].specimen.append(splittedMigrating[i], ignore_index = True)
-                self.populations[ID].specimen.sort_values(by = 'fitness', inplace = True)
+            for targetID in targetIDs:
+                self.populations[targetID].specimen = self.populations[targetID].specimen.append(splittedMigrating[i], ignore_index = True)
+                self.populations[targetID].specimen.sort_values(by = 'fitness', inplace = True)
                 i += 1
             pass
         pass
 
+    def receiveStats(self):
+        for pop in self.populations:
+            if self.type == 'normal':
+                data = pop.getStats()
+                self.stats[pop.populationID]['best'].append(data['best'])
+                self.stats[pop.populationID]['mean'].append(data['mean'])
+                self.stats[pop.populationID]['worst'].append(data['worst'])
+                self.stats[pop.populationID]['stddev'].append(data['stddev'])
+
+    def run(self):
+        self.initialize()
+        it = 0
+        while it < self.numberOfGenerations:
+            self.processPopulations()
+            if it % self.migrationFrequency == 0 and it > 0:
+                self.migrate()
+            self.receiveStats()
+            print('----------')
+            it += 1
+
+    def logOutput(self):
+        path = sys.path[0] + "\\logs\\" + self.type + "\\"
+        fileName = str(datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')) + '.txt'
+        logging.basicConfig(filename = path + fileName, level = logging.INFO)
 
 if __name__ == '__main__':
-    alg = Algorithm('normal', '2waysCircle', 5, 2)
     cities_ = readData('test1')
-    alg.initialize(cities_)
-    for it in range(2):
-        alg.processPopulations()
-        print('\n\n\n')
-    alg.migrate()
+    alg = Algorithm('normal', '2waysCircle', 5, 4, cities_, 10)
+    #alg.logOutput()
+    alg.run()
+    migrations = np.arange(0, 50, 5)
+    plt.figure(figsize = [30, 30])
+    for i in range(8):
+        plt.plot(alg.stats[i]['best'])
+    for migr in migrations:
+        plt.axvline(x = migr)
+    plt.show()
     pass
