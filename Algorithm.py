@@ -32,7 +32,7 @@ class Algorithm:
     def initialize(self):
         if self.type == 'normal':
             for popNumber in range(8):
-                pop = Population(popNumber, 0, self.cities, 50, 'normal', 5, 0.05, 10, self.migrationSize, None)
+                pop = Population(popNumber, 0, self.cities, 60, 'normal', 5, 0.05, 6, self.migrationSize, None)
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
@@ -61,10 +61,13 @@ class Algorithm:
         pass
 
     def migrate(self):
-        print('===MIGRATION===')
+        logging.info('===MIGRATION===')
         for ID, pop in enumerate(self.populations):
             pop.selectSpecimenForMigration()
-            targetIDs = list(self.topology[ID])
+            if hasattr(self.topology[ID], '__iter__'):
+                targetIDs = list(self.topology[ID])
+            else:
+                targetIDs = [self.topology[ID]]
             splittedMigrating = np.array_split(pop.migrating, len(targetIDs))
             i = 0
             for targetID in targetIDs:
@@ -84,31 +87,74 @@ class Algorithm:
                 self.stats[pop.populationID]['stddev'].append(data['stddev'])
 
     def run(self):
+        self.setLogOutput()
         self.initialize()
-        it = 0
-        while it < self.numberOfGenerations:
+        it = 1
+        while it <= self.numberOfGenerations:
+            logging.info('-----Generation {}-----'.format(it))
             self.processPopulations()
+            for pop in self.populations:
+                logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, -1]))
             if it % self.migrationFrequency == 0 and it > 0:
                 self.migrate()
             self.receiveStats()
-            print('----------')
             it += 1
+        self.logOutData()
 
-    def logOutput(self):
+    def setLogOutput(self):
         path = sys.path[0] + "\\logs\\" + self.type + "\\"
         fileName = str(datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')) + '.txt'
-        logging.basicConfig(filename = path + fileName, level = logging.INFO)
+        logging.basicConfig(filename = path + fileName, filemode = 'w', level = logging.INFO)
+        logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+
+    def logOutData(self):
+        bestFirsts = []
+        bestLasts = []
+        for i in range(8):
+            bestFirsts.append(self.stats[i]['best'][0])
+            bestLasts.append(self.stats[i]['best'][-1])
+        bestFirst = min(bestFirsts)
+        bestLast = min(bestLasts)
+        convs = []
+        for i in range(8):
+            try:
+                convs.append(min([ind for ind, val in enumerate(self.stats[i]['best']) if val <= 1.05*bestLast]))
+            except ValueError:
+                continue
+        conv = min(convs)
+        logging.info('Solution value: {}, Improvement: {}, Convergence: {}'.format(bestLast, bestFirst/bestLast, conv))
+        if self.type == 'normal':
+            self.logOutDataNormal()
+
+    def logOutDataNormal(self):
+        pmxProc = []
+        cxProc = []
+        oxProc = []
+        swapProc = []
+        insertProc = []
+        scrambleProc = []
+        inversionProc = []
+        for pop in self.populations:
+            pmxProc.append(pop.pmxEff/pop.pmx)
+            cxProc.append(pop.cxEff/pop.cx)
+            oxProc.append(pop.oxEff/pop.ox)
+            swapProc.append(pop.swapEff/pop.swap)
+            insertProc.append(pop.insertEff/pop.insert)
+            scrambleProc.append(pop.scrambleEff/pop.scramble)
+            inversionProc.append(pop.inversionEff/pop.inversion)
+        logging.info('PMX: {}, CX: {}, OX: {}, swap: {}, insert: {}, scramble: {}, inversion: {}'.
+                     format(np.mean(pmxProc), np.mean(cxProc), np.mean(oxProc), np.mean(swapProc),
+                            np.mean(insertProc), np.mean(scrambleProc), np.mean(inversionProc)))
 
 if __name__ == '__main__':
-    cities_ = readData('test1')
-    alg = Algorithm('normal', '2waysCircle', 5, 4, cities_, 10)
-    #alg.logOutput()
+    cities_ = readData('test3')
+    alg = Algorithm('normal', 'ladder', 10, 20, cities_, 100)
     alg.run()
     migrations = np.arange(0, 50, 5)
     plt.figure(figsize = [30, 30])
     for i in range(8):
         plt.plot(alg.stats[i]['best'])
-    for migr in migrations:
-        plt.axvline(x = migr)
+    # for migr in migrations:
+    #     plt.axvline(x = migr)
     plt.show()
     pass

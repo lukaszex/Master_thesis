@@ -155,8 +155,8 @@ class Population:
                 length += calculateDistance(self.cities[self.specimen.iloc[i, 0][j]], self.cities[self.specimen.iloc[i, 0][destCityIndex]])
                 self.specimen.iloc[i, -1] = length
         self.specimen.sort_values(by = 'fitness', inplace = True)
-        print('Population: {}. generation: {}, best fitness: {}'.
-              format(self.populationID, self.generationNumber, self.specimen.iloc[0, -1]))
+        #print('Population: {}. generation: {}, best fitness: {}'.
+        #      format(self.populationID, self.generationNumber, self.specimen.iloc[0, -1]))
         pass
 
     def processPopulation(self, retDict):
