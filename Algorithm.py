@@ -32,7 +32,7 @@ class Algorithm:
     def initialize(self):
         if self.type == 'normal':
             for popNumber in range(8):
-                pop = Population(popNumber, 0, self.cities, 60, 'normal', 5, 0.05, 6, self.migrationSize, None)
+                pop = Population(popNumber, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
@@ -64,6 +64,7 @@ class Algorithm:
         logging.info('===MIGRATION===')
         for ID, pop in enumerate(self.populations):
             pop.selectSpecimenForMigration()
+            pop.migrating = pop.migrating.sample(frac = 1)
             if hasattr(self.topology[ID], '__iter__'):
                 targetIDs = list(self.topology[ID])
             else:
@@ -85,21 +86,6 @@ class Algorithm:
                 self.stats[pop.populationID]['mean'].append(data['mean'])
                 self.stats[pop.populationID]['worst'].append(data['worst'])
                 self.stats[pop.populationID]['stddev'].append(data['stddev'])
-
-    def run(self):
-        self.setLogOutput()
-        self.initialize()
-        it = 1
-        while it <= self.numberOfGenerations:
-            logging.info('-----Generation {}-----'.format(it))
-            self.processPopulations()
-            for pop in self.populations:
-                logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, -1]))
-            if it % self.migrationFrequency == 0 and it > 0:
-                self.migrate()
-            self.receiveStats()
-            it += 1
-        self.logOutData()
 
     def setLogOutput(self):
         path = sys.path[0] + "\\logs\\" + self.type + "\\"
@@ -145,16 +131,56 @@ class Algorithm:
         logging.info('PMX: {}, CX: {}, OX: {}, swap: {}, insert: {}, scramble: {}, inversion: {}'.
                      format(np.mean(pmxProc), np.mean(cxProc), np.mean(oxProc), np.mean(swapProc),
                             np.mean(insertProc), np.mean(scrambleProc), np.mean(inversionProc)))
+    def plotOut(self):
+        plt.figure(figsize = [30, 30])
+        for i in range(8):
+            plt.plot(self.stats[i]['best'], label = self.populations[i].populationID)
+        plt.xlabel('Pokolenie')
+        plt.ylabel('Najlepsza wartość funkcji celu')
+        plt.grid()
+        plt.legend()
+        plt.show()
+        plt.figure(figsize=[30, 30])
+        for i in range(8):
+            plt.plot(self.stats[i]['mean'], label=self.populations[i].populationID)
+        plt.xlabel('Pokolenie')
+        plt.ylabel('Średnia wartość funkcji celu')
+        plt.grid()
+        plt.legend()
+        plt.show()
+        plt.figure(figsize=[30, 30])
+        stddevs = []
+        for i in range(8):
+            row = []
+            for j in range(len(self.stats[i]['stddev'])):
+                row.append(self.stats[i]['stddev'][j])
+            stddevs.append(row)
+        plt.plot(np.mean(stddevs, axis = 0), label = 'Średnie odchylenie standardowe wartości funkcji celu w populacjach')
+        plt.xlabel('Pokolenie')
+        plt.ylabel('Odchylenie standardowe wartości funkcji celu')
+        plt.grid()
+        plt.legend()
+        plt.show()
+
+    def run(self):
+        self.setLogOutput()
+        self.initialize()
+        it = 1
+        while it <= self.numberOfGenerations:
+            logging.info('-----Generation {}-----'.format(it))
+            self.processPopulations()
+            for pop in self.populations:
+                logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, -1]))
+            if it % self.migrationFrequency == 0 and it > 0:
+                self.migrate()
+            self.receiveStats()
+            it += 1
+        self.logOutData()
+        self.plotOut()
+
 
 if __name__ == '__main__':
     cities_ = readData('test3')
-    alg = Algorithm('normal', 'ladder', 10, 20, cities_, 100)
+    alg = Algorithm('normal', '1+2circle', 10, 10, cities_, 100)
     alg.run()
-    migrations = np.arange(0, 50, 5)
-    plt.figure(figsize = [30, 30])
-    for i in range(8):
-        plt.plot(alg.stats[i]['best'])
-    # for migr in migrations:
-    #     plt.axvline(x = migr)
-    plt.show()
     pass
