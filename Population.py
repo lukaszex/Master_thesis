@@ -4,10 +4,13 @@ from mutationFunctions import *
 import pandas as pd
 import numpy as np
 import random
+import logging
 
 class Population:
     def __init__(self, populationID_, generationNumber_, cities_, numberOfSpecimen_, type_, tournamentSize_, p_m_,
-                 eliteSize_, migrationSize_, specimen_, pmx_, cx_, ox_, pmxEff_, cxEff_, oxEff_, swap_, insert_, scramble_, inversion_, swapEff_, insertEff_, scrambleEff_, inversionEff_):
+                 eliteSize_, migrationSize_, specimen_, pmx_ = 0, cx_ = 0, ox_ = 0, pmxEff_ = 0, cxEff_ = 0, oxEff_ = 0,
+                 swap_ = 0, insert_ = 0, scramble_ = 0, inversion_ = 0, swapEff_ = 0, insertEff_ = 0, scrambleEff_ = 0,
+                 inversionEff_ = 0):
         self.populationID = populationID_
         self.generationNumber = generationNumber_
         self.cities = cities_
@@ -152,8 +155,20 @@ class Population:
                 length += calculateDistance(self.cities[self.specimen.iloc[i, 0][j]], self.cities[self.specimen.iloc[i, 0][destCityIndex]])
                 self.specimen.iloc[i, -1] = length
         self.specimen.sort_values(by = 'fitness', inplace = True)
-        print('Generation: {}, best fitness: {}'.format(self.generationNumber, self.specimen.iloc[0, -1]))
+        #print('Population: {}. generation: {}, best fitness: {}'.
+        #      format(self.populationID, self.generationNumber, self.specimen.iloc[0, -1]))
         pass
+
+    def processPopulation(self, retDict):
+        self.selectParents()
+        self.crossover()
+        self.mutate()
+        self.evaluate()
+        retDict[self.populationID] = self
+
+    def selectSpecimenForMigration(self):
+        self.migrating = self.specimen.sample(self.migrationSize)
+        self.specimen.drop(self.migrating.index, inplace = True)
 
     def evaluateSingleSpeciman(self, speciman):
         length = 0
@@ -165,6 +180,11 @@ class Population:
             length += calculateDistance(self.cities[speciman[j]], self.cities[speciman[destCityIndex]])
         return length
 
+    def getStats(self):
+        if self.type == 'normal':
+            stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
+                     'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std()}
+        return stats
 
 if __name__ == '__main__':
     cities_ = readData('test1')
@@ -172,10 +192,7 @@ if __name__ == '__main__':
     pop.createInitialPopulation()
     pop.evaluate()
     for it in range(1, 50):
-        pop.selectParents()
-        pop.crossover()
-        pop.mutate()
-        pop.evaluate()
+        pop.processPopulation()
         pop = Population(0, it, cities_, 50, 'normal', 5, 0.05, 10, 4, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff, pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
                          pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
     print('PMX: {}, OX: {}, CX: {}, swap: {}, insert: {}, scramble: {}, inversion: {}'.format(pop.pmxEff/pop.pmx,
