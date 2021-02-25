@@ -4,7 +4,6 @@ from mutationFunctions import *
 import pandas as pd
 import numpy as np
 import random
-import logging
 
 class Population:
     def __init__(self, populationID_, generationNumber_, cities_, numberOfSpecimen_, type_, tournamentSize_, p_m_,
@@ -40,6 +39,7 @@ class Population:
         self.inversionEff = inversionEff_
         self.parents = pd.DataFrame()
         self.childrenList = []
+        self.meanFitness = 0
 
     def createInitialPopulation(self):
         for i in range(self.numberOfSpecimen):
@@ -63,10 +63,27 @@ class Population:
         self.parents.sort_values(by = 'fitness', inplace = True)
         pass
 
+    def selectParentsAbsolute(self):
+        self.meanFitness = self.specimen['fitness'].mean()
+        self.specimen.insert(len(self.specimen.columns), 'p_c', np.zeros(self.specimen.shape[0], dtype = np.float))
+        for i in range(self.specimen.shape[0]):
+            self.specimen.iloc[i, -1] = 1 - 0.5*self.generationNumber/100 if self.specimen.iloc[i, 1] >= self.meanFitness else 1
+        while self.parents.shape[0] < self.numberOfSpecimen - self.eliteSize:
+            specimanNumber = int(random.random()*self.numberOfSpecimen)
+            if random.random() < self.specimen.iloc[specimanNumber, -1]:
+                self.parents = self.parents.append(self.specimen.iloc[specimanNumber, :])
+        self.parents.drop('p_c', axis = 1, inplace = True)
+        self.parents.sort_values(by = 'fitness', inplace = True)
+        self.specimen.drop('p_c', axis = 1, inplace = True)
+        pass
+
     def crossover(self):
-        self.specimen = self.parents.iloc[0:self.eliteSize, :]
+        self.specimen = self.specimen.iloc[0:self.eliteSize, :]
+        #self.specimen = self.specimen[['solution', 'fitness']]
         if self.type == 'normal':
             self.crossoverNormal()
+        elif self.type == 'absolute':
+            self.crossoverAbsolute()
 
     def crossoverNormal(self):
         for i in range(int(self.parents.shape[0] / 2)):
@@ -103,9 +120,21 @@ class Population:
             self.childrenList.append(child2)
         pass
 
+    def crossoverAbsolute(self):
+        for i in range(int(self.parents.shape[0] / 2)):
+            parent1 = self.parents.iloc[i, 1]
+            parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
+            child1 = crossoverOX(parent1, parent2)
+            child2 = crossoverOX(parent2, parent1)
+            self.childrenList.append(child1)
+            self.childrenList.append(child2)
+        pass
+
     def mutate(self):
         if self.type == 'normal':
             self.mutateNormal()
+        elif self.type == 'absolute':
+            self.mutateAbsolute()
 
     def mutateNormal(self):
         for child in self.childrenList:
@@ -138,7 +167,20 @@ class Population:
                         self.inversionEff += 1
             child = pd.Series([child, np.nan])
             self.specimen = self.specimen.append(child, ignore_index = True)
-        self.specimen.iloc[self.eliteSize:, 1] = self.specimen.iloc[self.eliteSize:, 2]
+        self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
+        self.specimen = self.specimen[['solution', 'fitness']]
+        pass
+
+    def mutateAbsolute(self):
+        for child in self.childrenList:
+            fitness = self.evaluateSingleSpeciman(child)
+            p_m = 0.01 + 0.09*self.generationNumber/100 if fitness >= self.meanFitness else 0.01
+            if random.random() < p_m:
+                self.inversion += 1
+                child = mutationInversion(child)
+            child = pd.Series([child, np.nan])
+            self.specimen = self.specimen.append(child, ignore_index = True)
+        self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
         self.specimen = self.specimen[['solution', 'fitness']]
         pass
 
@@ -155,8 +197,6 @@ class Population:
                 length += calculateDistance(self.cities[self.specimen.iloc[i, 0][j]], self.cities[self.specimen.iloc[i, 0][destCityIndex]])
                 self.specimen.iloc[i, -1] = length
         self.specimen.sort_values(by = 'fitness', inplace = True)
-        #print('Population: {}. generation: {}, best fitness: {}'.
-        #      format(self.populationID, self.generationNumber, self.specimen.iloc[0, -1]))
         pass
 
     def processPopulation(self, retDict):
@@ -181,19 +221,22 @@ class Population:
         return length
 
     def getStats(self):
-        if self.type == 'normal':
+        if self.type in ['normal', 'absolute']:
             stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
                      'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std()}
         return stats
 
 if __name__ == '__main__':
     cities_ = readData('test1')
-    pop = Population(1, 0, cities_, 50, 'normal', 5, 0.05, 10, 4, None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    pop = Population(1, 1, cities_, 50, 'absolute', 5, 0.05, 10, 4, None)
     pop.createInitialPopulation()
     pop.evaluate()
-    for it in range(1, 50):
-        pop.processPopulation()
-        pop = Population(0, it, cities_, 50, 'normal', 5, 0.05, 10, 4, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff, pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
+    for it in range(2, 10):
+        pop.selectParents()
+        pop.crossover()
+        pop.mutate()
+        pop.evaluate()
+        pop = Population(0, it, cities_, 50, 'absolute', 5, 0.05, 10, 4, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff, pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
                          pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
     print('PMX: {}, OX: {}, CX: {}, swap: {}, insert: {}, scramble: {}, inversion: {}'.format(pop.pmxEff/pop.pmx,
           pop.oxEff/pop.ox, pop.cxEff/pop.cx, pop.swapEff/pop.swap, pop.insertEff/pop.insert, pop.scrambleEff/pop.scramble, pop.inversionEff/pop.inversion))

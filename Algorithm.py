@@ -3,6 +3,7 @@ import multiprocessing as mp
 from matplotlib import pyplot as plt
 import sys
 import datetime
+import logging
 
 class Algorithm:
     def __init__(self, type_, topology_, migrationFrequency_, migrationSize_, cities_, numberOfGenerations_):
@@ -36,6 +37,18 @@ class Algorithm:
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
+        elif self.type == 'static':
+            i = 0
+            while len(self.populations) < 8:
+                pop1 = Population(i, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
+                pop2 = Population(i + 1, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
+                pop1.createInitialPopulation()
+                pop2.createInitialPopulation()
+                pop1.evaluate()
+                pop2.evaluate()
+                self.populations.append(pop1)
+                self.populations.append(pop2)
+                i += 2
         pass
 
     def processPopulations(self):
@@ -180,7 +193,7 @@ class Algorithm:
 
 
 if __name__ == '__main__':
-    cities_ = readData('test3')
-    alg = Algorithm('normal', '1+2circle', 10, 10, cities_, 100)
+    cities_ = readData('test1')
+    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 20)
     alg.run()
     pass
