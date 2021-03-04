@@ -28,12 +28,12 @@ class Algorithm:
         self.populations = []
         self.stats = []
         for popID in range(8):
-            self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': []})
+            self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': [], 'mutations': []})
 
     def initialize(self):
         if self.type == 'normal':
             for popNumber in range(8):
-                pop = Population(popNumber, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
+                pop = Population(popNumber, 0, self.cities, 100, 'normal', 3, 0.2, 10, self.migrationSize, None)
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
@@ -41,7 +41,7 @@ class Algorithm:
             i = 0
             while len(self.populations) < 8:
                 pop1 = Population(i, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
-                pop2 = Population(i + 1, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
+                pop2 = Population(i + 1, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
                 pop1.createInitialPopulation()
                 pop2.createInitialPopulation()
                 pop1.evaluate()
@@ -93,12 +93,13 @@ class Algorithm:
 
     def receiveStats(self):
         for pop in self.populations:
-            if self.type == 'normal':
-                data = pop.getStats()
-                self.stats[pop.populationID]['best'].append(data['best'])
-                self.stats[pop.populationID]['mean'].append(data['mean'])
-                self.stats[pop.populationID]['worst'].append(data['worst'])
-                self.stats[pop.populationID]['stddev'].append(data['stddev'])
+            data = pop.getStats()
+            self.stats[pop.populationID]['best'].append(data['best'])
+            self.stats[pop.populationID]['mean'].append(data['mean'])
+            self.stats[pop.populationID]['worst'].append(data['worst'])
+            self.stats[pop.populationID]['stddev'].append(data['stddev'])
+            if pop.type == 'absolute':
+                self.stats[pop.populationID]['mutations'].append(data['mutations'])
 
     def setLogOutput(self):
         path = sys.path[0] + "\\logs\\" + self.type + "\\"
@@ -174,6 +175,14 @@ class Algorithm:
         plt.grid()
         plt.legend()
         plt.show()
+        if self.type == 'static':
+            plt.figure(figsize=[30, 30])
+            for i in range(8):
+                mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
+                mutations = pd.Series(mutations)
+                mutationsRoll = mutations.rolling(window = 10).mean()
+                plt.plot(mutationsRoll)
+            plt.show()
 
     def run(self):
         self.setLogOutput()
@@ -194,6 +203,6 @@ class Algorithm:
 
 if __name__ == '__main__':
     cities_ = readData('test1')
-    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 20)
+    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 100)
     alg.run()
     pass

@@ -79,7 +79,6 @@ class Population:
 
     def crossover(self):
         self.specimen = self.specimen.iloc[0:self.eliteSize, :]
-        #self.specimen = self.specimen[['solution', 'fitness']]
         if self.type == 'normal':
             self.crossoverNormal()
         elif self.type == 'absolute':
@@ -221,9 +220,11 @@ class Population:
         return length
 
     def getStats(self):
-        if self.type in ['normal', 'absolute']:
-            stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
-                     'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std()}
+        stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
+                 'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std(),
+                 'mutations': self.swap + self.insert + self.scramble + self.inversion}
+        # if self.type == 'absolute':
+        #     stats['mutations'] = self.inversion
         return stats
 
 if __name__ == '__main__':
