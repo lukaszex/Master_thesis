@@ -47,10 +47,14 @@ class Population:
             route = pd.Series([route, np.nan])
             self.specimen = self.specimen.append(route, ignore_index = True)
         self.specimen.columns = ['solution', 'fitness']
+        if self.type == 'empirical':
+            p_m = [[random.uniform(0.05, 0.15), random.uniform(0.05, 0.15), random.uniform(0.05, 0.15),
+                    random.uniform(0.05, 0.15)] for j in range(self.specimen.shape[0])]
+            self.specimen.insert(2, 'p_m', p_m)
         pass
 
     def selectParents(self):
-        if self.type == 'normal':
+        if self.type in ['normal', 'empirical']:
             self.selectParentsNormal()
         elif self.type == 'absolute':
             self.selectParentsAbsolute()
@@ -83,6 +87,8 @@ class Population:
             self.crossoverNormal()
         elif self.type == 'absolute':
             self.crossoverAbsolute()
+        elif self.type == 'empirical':
+            self.crossoverEmpirical()
 
     def crossoverNormal(self):
         for i in range(int(self.parents.shape[0] / 2)):
@@ -129,11 +135,26 @@ class Population:
             self.childrenList.append(child2)
         pass
 
+    def crossoverEmpirical(self):
+        for i in range(int(self.parents.shape[0] / 2)):
+            parent1Params = self.parents.iloc[i, 1]
+            parent1 = self.parents.iloc[i, 2]
+            parent2Params = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
+            parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 2]
+            child1Params, child2Params = crossoverParams(parent1Params, parent2Params)
+            child1 = crossoverOX(parent1, parent2)
+            child2 = crossoverOX(parent2, parent1)
+            self.childrenList.append((child1, child1Params))
+            self.childrenList.append((child2, child2Params))
+        pass
+
     def mutate(self):
         if self.type == 'normal':
             self.mutateNormal()
         elif self.type == 'absolute':
             self.mutateAbsolute()
+        elif self.type == 'empirical':
+            self.mutateEmpirical()
 
     def mutateNormal(self):
         for child in self.childrenList:
@@ -164,10 +185,10 @@ class Population:
                     afterFitness = self.evaluateSingleSpeciman(child)
                     if afterFitness < beforeFitness:
                         self.inversionEff += 1
-            child = pd.Series([child, np.nan])
+            child = pd.Series({'solution': child, 'fitness': np.nan})
             self.specimen = self.specimen.append(child, ignore_index = True)
-        self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
-        self.specimen = self.specimen[['solution', 'fitness']]
+        # self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
+        # self.specimen = self.specimen[['solution', 'fitness']]
         pass
 
     def mutateAbsolute(self):
@@ -177,10 +198,33 @@ class Population:
             if random.random() < p_m:
                 self.inversion += 1
                 child = mutationInversion(child)
-            child = pd.Series([child, np.nan])
+            child = pd.Series({'solution': child, 'fitness': np.nan})
             self.specimen = self.specimen.append(child, ignore_index = True)
-        self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
-        self.specimen = self.specimen[['solution', 'fitness']]
+        # self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
+        # self.specimen = self.specimen[['solution', 'fitness']]
+        pass
+
+    def mutateEmpirical(self):
+        for child in self.childrenList:
+            for param in child[1]:
+                if random.random() < param:
+                    param += random.uniform(-0.05, 0.05)
+        for child in self.childrenList:
+            mutType = random.choices(['swap', 'insert', 'scramble', 'inversion'], child[1])
+            if mutType == 'swap':
+                if random.random() < child[1][0]:
+                    child[0] = mutationSwap(child[0])
+            elif mutType == 'insert':
+                if random.random() < child[1][1]:
+                    child[0] = mutationInsert(child[0])
+            elif mutType == 'scramble':
+                if random.random() < child[1][2]:
+                    child[0] = mutationScramble(child[0])
+            elif mutType == 'inversion':
+                if random.random() < child[1][3]:
+                    child[0] = mutationInversion(child[0])
+            child = pd.Series({'solution': child[0], 'fitness': np.nan, 'p_m': child[1]})
+            self.specimen = self.specimen.append(child, ignore_index = True)
         pass
 
     def evaluate(self):
@@ -194,7 +238,7 @@ class Population:
                 else:
                     destCityIndex = 0
                 length += calculateDistance(self.cities[self.specimen.iloc[i, 0][j]], self.cities[self.specimen.iloc[i, 0][destCityIndex]])
-                self.specimen.iloc[i, -1] = length
+                self.specimen.iloc[i, 1] = length
         self.specimen.sort_values(by = 'fitness', inplace = True)
         pass
 
@@ -223,13 +267,11 @@ class Population:
         stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
                  'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std(),
                  'mutations': self.swap + self.insert + self.scramble + self.inversion}
-        # if self.type == 'absolute':
-        #     stats['mutations'] = self.inversion
         return stats
 
 if __name__ == '__main__':
     cities_ = readData('test1')
-    pop = Population(1, 1, cities_, 50, 'absolute', 5, 0.05, 10, 4, None)
+    pop = Population(1, 1, cities_, 50, 'normal', 5, 0.05, 10, 4, None)
     pop.createInitialPopulation()
     pop.evaluate()
     for it in range(2, 10):

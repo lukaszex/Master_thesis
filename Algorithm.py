@@ -40,15 +40,19 @@ class Algorithm:
         elif self.type == 'static':
             i = 0
             while len(self.populations) < 8:
-                pop1 = Population(i, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
-                pop2 = Population(i + 1, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
+                pop1 = Population(i, 0, self.cities, 100, 'empirical', 3, 0.1, 10, self.migrationSize, None)
+                pop2 = Population(i + 1, 0, self.cities, 100, 'empirical', 3, 0.1, 10, self.migrationSize, None)
+                pop3 = Population(i + 2, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
                 pop1.createInitialPopulation()
                 pop2.createInitialPopulation()
+                pop3.createInitialPopulation()
                 pop1.evaluate()
                 pop2.evaluate()
+                pop3.evaluate()
                 self.populations.append(pop1)
                 self.populations.append(pop2)
-                i += 2
+                self.populations.append(pop3)
+                i += 3
         pass
 
     def processPopulations(self):
