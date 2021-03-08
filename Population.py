@@ -144,8 +144,8 @@ class Population:
             child1Params, child2Params = crossoverParams(parent1Params, parent2Params)
             child1 = crossoverOX(parent1, parent2)
             child2 = crossoverOX(parent2, parent1)
-            self.childrenList.append((child1, child1Params))
-            self.childrenList.append((child2, child2Params))
+            self.childrenList.append([child1, child1Params])
+            self.childrenList.append([child2, child2Params])
         pass
 
     def mutate(self):
@@ -194,7 +194,7 @@ class Population:
     def mutateAbsolute(self):
         for child in self.childrenList:
             fitness = self.evaluateSingleSpeciman(child)
-            p_m = 0.01 + 0.09*self.generationNumber/100 if fitness >= self.meanFitness else 0.01
+            p_m = 0.01 + 0.09*self.generationNumber/10 if fitness >= self.meanFitness else 0.01
             if random.random() < p_m:
                 self.inversion += 1
                 child = mutationInversion(child)
@@ -211,17 +211,21 @@ class Population:
                     param += random.uniform(-0.05, 0.05)
         for child in self.childrenList:
             mutType = random.choices(['swap', 'insert', 'scramble', 'inversion'], child[1])
-            if mutType == 'swap':
+            if mutType == ['swap']:
                 if random.random() < child[1][0]:
+                    self.swap += 1
                     child[0] = mutationSwap(child[0])
-            elif mutType == 'insert':
+            elif mutType == ['insert']:
                 if random.random() < child[1][1]:
+                    self.insert += 1
                     child[0] = mutationInsert(child[0])
-            elif mutType == 'scramble':
+            elif mutType == ['scramble']:
                 if random.random() < child[1][2]:
+                    self.scramble += 1
                     child[0] = mutationScramble(child[0])
-            elif mutType == 'inversion':
+            elif mutType == ['inversion']:
                 if random.random() < child[1][3]:
+                    self.inversion += 1
                     child[0] = mutationInversion(child[0])
             child = pd.Series({'solution': child[0], 'fitness': np.nan, 'p_m': child[1]})
             self.specimen = self.specimen.append(child, ignore_index = True)

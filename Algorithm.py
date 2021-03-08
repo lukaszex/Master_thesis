@@ -41,18 +41,18 @@ class Algorithm:
             i = 0
             while len(self.populations) < 8:
                 pop1 = Population(i, 0, self.cities, 100, 'empirical', 3, 0.1, 10, self.migrationSize, None)
-                pop2 = Population(i + 1, 0, self.cities, 100, 'empirical', 3, 0.1, 10, self.migrationSize, None)
-                pop3 = Population(i + 2, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
+                pop2 = Population(i + 1, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
+                #pop3 = Population(i + 2, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
                 pop1.createInitialPopulation()
                 pop2.createInitialPopulation()
-                pop3.createInitialPopulation()
+                #pop3.createInitialPopulation()
                 pop1.evaluate()
                 pop2.evaluate()
-                pop3.evaluate()
+                #pop3.evaluate()
                 self.populations.append(pop1)
                 self.populations.append(pop2)
-                self.populations.append(pop3)
-                i += 3
+                #self.populations.append(pop3)
+                i += 2
         pass
 
     def processPopulations(self):
@@ -102,8 +102,8 @@ class Algorithm:
             self.stats[pop.populationID]['mean'].append(data['mean'])
             self.stats[pop.populationID]['worst'].append(data['worst'])
             self.stats[pop.populationID]['stddev'].append(data['stddev'])
-            if pop.type == 'absolute':
-                self.stats[pop.populationID]['mutations'].append(data['mutations'])
+            #if pop.type == 'absolute':
+            self.stats[pop.populationID]['mutations'].append(data['mutations'])
 
     def setLogOutput(self):
         path = sys.path[0] + "\\logs\\" + self.type + "\\"
@@ -150,9 +150,12 @@ class Algorithm:
                      format(np.mean(pmxProc), np.mean(cxProc), np.mean(oxProc), np.mean(swapProc),
                             np.mean(insertProc), np.mean(scrambleProc), np.mean(inversionProc)))
     def plotOut(self):
+        colors = {'normal': 'black', 'absolute': 'red', 'empirical': 'blue'}
         plt.figure(figsize = [30, 30])
         for i in range(8):
-            plt.plot(self.stats[i]['best'], label = self.populations[i].populationID)
+            plt.plot(self.stats[i]['best'], label = '{} ({})'.
+                     format(self.populations[i].populationID, self.populations[i].type),
+                     color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Najlepsza wartość funkcji celu')
         plt.grid()
@@ -160,7 +163,9 @@ class Algorithm:
         plt.show()
         plt.figure(figsize=[30, 30])
         for i in range(8):
-            plt.plot(self.stats[i]['mean'], label=self.populations[i].populationID)
+            plt.plot(self.stats[i]['mean'], label = '{} ({})'.
+                     format(self.populations[i].populationID, self.populations[i].type),
+                     color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Średnia wartość funkcji celu')
         plt.grid()
@@ -179,14 +184,21 @@ class Algorithm:
         plt.grid()
         plt.legend()
         plt.show()
-        if self.type == 'static':
-            plt.figure(figsize=[30, 30])
-            for i in range(8):
-                mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
-                mutations = pd.Series(mutations)
-                mutationsRoll = mutations.rolling(window = 10).mean()
-                plt.plot(mutationsRoll)
-            plt.show()
+        #if self.type == 'static':
+        plt.figure(figsize=[30, 30])
+        for i in range(8):
+            mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
+            mutations = pd.Series(mutations)
+            mutationsRoll = mutations.rolling(window = 5).mean()
+            plt.plot(mutationsRoll, label = '{} ({})'.
+                     format(self.populations[i].populationID, self.populations[i].type),
+                     color = colors[self.populations[i].type])
+            #plt.plot(mutations)
+        plt.xlabel('Pokolenie')
+        plt.ylabel('Liczba mutacji')
+        plt.grid()
+        plt.legend()
+        plt.show()
 
     def run(self):
         self.setLogOutput()
@@ -196,7 +208,7 @@ class Algorithm:
             logging.info('-----Generation {}-----'.format(it))
             self.processPopulations()
             for pop in self.populations:
-                logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, -1]))
+                logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, 1]))
             if it % self.migrationFrequency == 0 and it > 0:
                 self.migrate()
             self.receiveStats()
@@ -207,6 +219,6 @@ class Algorithm:
 
 if __name__ == '__main__':
     cities_ = readData('test1')
-    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 100)
+    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 10)
     alg.run()
     pass
