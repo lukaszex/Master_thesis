@@ -5,6 +5,8 @@ import sys
 import datetime
 import logging
 
+colors = {'normal': 'black', 'absolute': 'red', 'empirical': 'blue'}
+
 class Algorithm:
     def __init__(self, type_, topology_, migrationFrequency_, migrationSize_, cities_, numberOfGenerations_):
         self.type = type_
@@ -28,7 +30,7 @@ class Algorithm:
         self.populations = []
         self.stats = []
         for popID in range(8):
-            self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': [], 'mutations': []})
+            self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': [], 'mutations': [], 'mutProbs': []})
 
     def initialize(self):
         if self.type == 'normal':
@@ -38,21 +40,18 @@ class Algorithm:
                 pop.evaluate()
                 self.populations.append(pop)
         elif self.type == 'static':
-            i = 0
-            while len(self.populations) < 8:
-                pop1 = Population(i, 0, self.cities, 100, 'empirical', 3, 0.1, 10, self.migrationSize, None)
-                pop2 = Population(i + 1, 0, self.cities, 100, 'absolute', 3, 0.1, 10, self.migrationSize, None)
-                #pop3 = Population(i + 2, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
-                pop1.createInitialPopulation()
-                pop2.createInitialPopulation()
-                #pop3.createInitialPopulation()
-                pop1.evaluate()
-                pop2.evaluate()
-                #pop3.evaluate()
-                self.populations.append(pop1)
-                self.populations.append(pop2)
-                #self.populations.append(pop3)
-                i += 2
+            pop0 = Population(0, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
+            pop1 = Population(1, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
+            pop2 = Population(2, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
+            pop3 = Population(3, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
+            pop4 = Population(4, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
+            pop5 = Population(5, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
+            pop6 = Population(6, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
+            pop7 = Population(7, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
+            self.populations = [pop0, pop1, pop2, pop3, pop4, pop5, pop6, pop7]
+            for pop in self.populations:
+                pop.createInitialPopulation()
+                pop.evaluate()
         pass
 
     def processPopulations(self):
@@ -102,8 +101,9 @@ class Algorithm:
             self.stats[pop.populationID]['mean'].append(data['mean'])
             self.stats[pop.populationID]['worst'].append(data['worst'])
             self.stats[pop.populationID]['stddev'].append(data['stddev'])
-            #if pop.type == 'absolute':
             self.stats[pop.populationID]['mutations'].append(data['mutations'])
+            if pop.type == 'empirical':
+                self.stats[pop.populationID]['mutProbs'].append(data['mutProbs'])
 
     def setLogOutput(self):
         path = sys.path[0] + "\\logs\\" + self.type + "\\"
@@ -112,13 +112,8 @@ class Algorithm:
         logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     def logOutData(self):
-        bestFirsts = []
-        bestLasts = []
-        for i in range(8):
-            bestFirsts.append(self.stats[i]['best'][0])
-            bestLasts.append(self.stats[i]['best'][-1])
-        bestFirst = min(bestFirsts)
-        bestLast = min(bestLasts)
+        bestFirst = min([self.stats[i]['best'][0] for i in range(8)])
+        bestLast = min([self.stats[i]['best'][-1] for i in range(8)])
         convs = []
         for i in range(8):
             try:
@@ -131,26 +126,25 @@ class Algorithm:
             self.logOutDataNormal()
 
     def logOutDataNormal(self):
-        pmxProc = []
-        cxProc = []
-        oxProc = []
-        swapProc = []
-        insertProc = []
-        scrambleProc = []
-        inversionProc = []
-        for pop in self.populations:
-            pmxProc.append(pop.pmxEff/pop.pmx)
-            cxProc.append(pop.cxEff/pop.cx)
-            oxProc.append(pop.oxEff/pop.ox)
-            swapProc.append(pop.swapEff/pop.swap)
-            insertProc.append(pop.insertEff/pop.insert)
-            scrambleProc.append(pop.scrambleEff/pop.scramble)
-            inversionProc.append(pop.inversionEff/pop.inversion)
+        pmxProc = [pop.pmxEff/pop.pmx for pop in self.populations]
+        cxProc = [pop.cxEff/pop.cx for pop in self.populations]
+        oxProc = [pop.oxEff/pop.ox for pop in self.populations]
+        swapProc = [pop.swapEff/pop.swap for pop in self.populations]
+        insertProc = [pop.insertEff/pop.insert for pop in self.populations]
+        scrambleProc = [pop.scrambleEff/pop.scramble for pop in self.populations]
+        inversionProc = [pop.inversionEff/pop.inversion for pop in self.populations]
         logging.info('PMX: {}, CX: {}, OX: {}, swap: {}, insert: {}, scramble: {}, inversion: {}'.
                      format(np.mean(pmxProc), np.mean(cxProc), np.mean(oxProc), np.mean(swapProc),
                             np.mean(insertProc), np.mean(scrambleProc), np.mean(inversionProc)))
     def plotOut(self):
-        colors = {'normal': 'black', 'absolute': 'red', 'empirical': 'blue'}
+        self.plotBest()
+        self.plotMean()
+        self.plotStddev()
+        if self.type in ['static', 'dynamic']:
+            self.plotMutations()
+            self.plotMutProbs()
+
+    def plotBest(self):
         plt.figure(figsize = [30, 30])
         for i in range(8):
             plt.plot(self.stats[i]['best'], label = '{} ({})'.
@@ -161,6 +155,8 @@ class Algorithm:
         plt.grid()
         plt.legend()
         plt.show()
+
+    def plotMean(self):
         plt.figure(figsize=[30, 30])
         for i in range(8):
             plt.plot(self.stats[i]['mean'], label = '{} ({})'.
@@ -171,31 +167,46 @@ class Algorithm:
         plt.grid()
         plt.legend()
         plt.show()
+
+    def plotStddev(self):
         plt.figure(figsize=[30, 30])
-        stddevs = []
         for i in range(8):
-            row = []
-            for j in range(len(self.stats[i]['stddev'])):
-                row.append(self.stats[i]['stddev'][j])
-            stddevs.append(row)
-        plt.plot(np.mean(stddevs, axis = 0), label = 'Średnie odchylenie standardowe wartości funkcji celu w populacjach')
+            # stddevs = pd.Series(self.stats[i]['stddev'])
+            # stddevsRoll = stddevs.rolling(window = 5).mean()
+            plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 5).mean(), label = '{} ({})'.
+                     format(self.populations[i].populationID, self.populations[i].type),
+                     color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Odchylenie standardowe wartości funkcji celu')
         plt.grid()
         plt.legend()
         plt.show()
-        #if self.type == 'static':
+
+    def plotMutations(self):
         plt.figure(figsize=[30, 30])
         for i in range(8):
             mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
-            mutations = pd.Series(mutations)
-            mutationsRoll = mutations.rolling(window = 5).mean()
-            plt.plot(mutationsRoll, label = '{} ({})'.
+            plt.plot(pd.Series(mutations).rolling(window = 5).mean(), label = '{} ({})'.
                      format(self.populations[i].populationID, self.populations[i].type),
                      color = colors[self.populations[i].type])
-            #plt.plot(mutations)
         plt.xlabel('Pokolenie')
         plt.ylabel('Liczba mutacji')
+        plt.grid()
+        plt.legend()
+        plt.show()
+
+    def plotMutProbs(self):
+        plt.figure(figsize = [30, 30])
+        swapProbs = pd.Series([self.stats[1]['mutProbs'][i][0] for i in range(len(self.stats[1]['mutProbs']))])
+        insertProbs = pd.Series([self.stats[1]['mutProbs'][i][1] for i in range(len(self.stats[1]['mutProbs']))])
+        scrambleProbs = pd.Series([self.stats[1]['mutProbs'][i][2] for i in range(len(self.stats[1]['mutProbs']))])
+        inversionProbs = pd.Series([self.stats[1]['mutProbs'][i][3] for i in range(len(self.stats[1]['mutProbs']))])
+        plt.plot(swapProbs.rolling(window = 5).mean(), label = 'swap')
+        plt.plot(insertProbs.rolling(window = 5).mean(), label = 'insert')
+        plt.plot(scrambleProbs.rolling(window = 5).mean(), label = 'scramble')
+        plt.plot(inversionProbs.rolling(window = 5).mean(), label = 'inversion')
+        plt.xlabel('Pokolenie')
+        plt.ylabel('Prawdopodobieństwo mutacji')
         plt.grid()
         plt.legend()
         plt.show()
@@ -209,9 +220,9 @@ class Algorithm:
             self.processPopulations()
             for pop in self.populations:
                 logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, 1]))
+            self.receiveStats()
             if it % self.migrationFrequency == 0 and it > 0:
                 self.migrate()
-            self.receiveStats()
             it += 1
         self.logOutData()
         self.plotOut()
@@ -219,6 +230,6 @@ class Algorithm:
 
 if __name__ == '__main__':
     cities_ = readData('test1')
-    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 10)
+    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 5)
     alg.run()
     pass

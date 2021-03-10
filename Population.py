@@ -138,8 +138,14 @@ class Population:
     def crossoverEmpirical(self):
         for i in range(int(self.parents.shape[0] / 2)):
             parent1Params = self.parents.iloc[i, 1]
+            if type(parent1Params) is float:
+                parent1Params = [random.uniform(0.05, 0.15), random.uniform(0.05, 0.15), random.uniform(0.05, 0.15),
+                                           random.uniform(0.05, 0.15)]
             parent1 = self.parents.iloc[i, 2]
             parent2Params = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
+            if type(parent2Params) is float:
+                parent2Params = [random.uniform(0.05, 0.15), random.uniform(0.05, 0.15), random.uniform(0.05, 0.15),
+                                           random.uniform(0.05, 0.15)]
             parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 2]
             child1Params, child2Params = crossoverParams(parent1Params, parent2Params)
             child1 = crossoverOX(parent1, parent2)
@@ -187,8 +193,6 @@ class Population:
                         self.inversionEff += 1
             child = pd.Series({'solution': child, 'fitness': np.nan})
             self.specimen = self.specimen.append(child, ignore_index = True)
-        # self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
-        # self.specimen = self.specimen[['solution', 'fitness']]
         pass
 
     def mutateAbsolute(self):
@@ -200,8 +204,6 @@ class Population:
                 child = mutationInversion(child)
             child = pd.Series({'solution': child, 'fitness': np.nan})
             self.specimen = self.specimen.append(child, ignore_index = True)
-        # self.specimen.iloc[self.eliteSize:, 0] = self.specimen.iloc[self.eliteSize:, 2]
-        # self.specimen = self.specimen[['solution', 'fitness']]
         pass
 
     def mutateEmpirical(self):
@@ -235,27 +237,9 @@ class Population:
         if 'fitness' not in self.specimen.columns:
             self.specimen.insert(len(self.specimen.columns), 'fitness', np.zeros(self.specimen.shape[0], dtype = np.float))
         for i in range(self.numberOfSpecimen):
-            length = 0
-            for j in range(len(self.cities)):
-                if j + 1 < len(self.cities):
-                    destCityIndex = j + 1
-                else:
-                    destCityIndex = 0
-                length += calculateDistance(self.cities[self.specimen.iloc[i, 0][j]], self.cities[self.specimen.iloc[i, 0][destCityIndex]])
-                self.specimen.iloc[i, 1] = length
+            self.specimen.iloc[i, 1] = self.evaluateSingleSpeciman(self.specimen.iloc[i, 0])
         self.specimen.sort_values(by = 'fitness', inplace = True)
         pass
-
-    def processPopulation(self, retDict):
-        self.selectParents()
-        self.crossover()
-        self.mutate()
-        self.evaluate()
-        retDict[self.populationID] = self
-
-    def selectSpecimenForMigration(self):
-        self.migrating = self.specimen.sample(self.migrationSize)
-        self.specimen.drop(self.migrating.index, inplace = True)
 
     def evaluateSingleSpeciman(self, speciman):
         length = 0
@@ -267,10 +251,25 @@ class Population:
             length += calculateDistance(self.cities[speciman[j]], self.cities[speciman[destCityIndex]])
         return length
 
+    def processPopulation(self, retDict):
+        self.selectParents()
+        self.crossover()
+        self.mutate()
+        self.evaluate()
+        retDict[self.populationID] = self
+
+    def selectSpecimenForMigration(self):
+        self.migrating = self.specimen.sample(self.migrationSize)
+        self.specimen.drop(self.migrating.index, inplace = True)
+        self.migrating = self.migrating[['solution', 'fitness']]
+
     def getStats(self):
         stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
                  'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std(),
                  'mutations': self.swap + self.insert + self.scramble + self.inversion}
+        if self.type == 'empirical':
+            stats['mutProbs'] = (np.mean(self.specimen.iloc[:, 2][0]), np.mean(self.specimen.iloc[:, 2][1]),
+                                 np.mean(self.specimen.iloc[:, 2][2]), np.mean(self.specimen.iloc[:, 2][3]))
         return stats
 
 if __name__ == '__main__':
