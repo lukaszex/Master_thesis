@@ -30,7 +30,7 @@ class Algorithm:
         self.populations = []
         self.stats = []
         for popID in range(8):
-            self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': [], 'mutations': [], 'mutProbs': []})
+             self.stats.append({'best': [], 'mean': [], 'worst': [], 'stddev': [], 'mutations': [], 'mutProbs': [], 'type': []})
 
     def initialize(self):
         if self.type == 'normal':
@@ -39,13 +39,13 @@ class Algorithm:
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
-        elif self.type == 'static':
+        elif self.type in ['static', 'dynamic']:
             pop0 = Population(0, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
             pop1 = Population(1, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
-            pop2 = Population(2, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
+            pop2 = Population(2, 0, self.cities, 100, 'normal', 3, 0.2, 10, self.migrationSize, None)
             pop3 = Population(3, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
             pop4 = Population(4, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
-            pop5 = Population(5, 0, self.cities, 100, 'normal', 3, 0.1, 10, self.migrationSize, None)
+            pop5 = Population(5, 0, self.cities, 100, 'normal', 3, 0.2, 10, self.migrationSize, None)
             pop6 = Population(6, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
             pop7 = Population(7, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
             self.populations = [pop0, pop1, pop2, pop3, pop4, pop5, pop6, pop7]
@@ -66,12 +66,20 @@ class Algorithm:
             j.join()
         self.newPopulations = []
         self.generationNumber += 1
+        #if self.type in ['normal', 'static']:
         for pop in retDict.values():
             newPop = Population(pop.populationID, self.generationNumber, cities_, pop.numberOfSpecimen, pop.type, pop.tournamentSize,
                                 pop.p_m, pop.eliteSize, pop.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
                                 pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion, pop.swapEff,
                                 pop.insertEff, pop.scrambleEff, pop.inversionEff)
             self.newPopulations.append(newPop)
+        # elif self.type == 'dynamic':
+        #     for pop in retDict.values():
+        #         if (self.generationNumber > self.migrationFrequency and
+        #                 pop.specimen['fitness'].min() >= self.stats[pop.populationID]['best'][self.generationNumber - self.migrationFrequency]):
+        #             logging.info('Population {} - change of type'.format(pop.populationID))
+        #
+
         self.populations = self.newPopulations
         self.populations.sort(key = lambda x: x.populationID)
         pass
@@ -94,6 +102,35 @@ class Algorithm:
             pass
         pass
 
+    def changeType(self):
+        self.newPopulations = []
+        for pop in self.populations:
+            if pop.specimen['fitness'].min() >= 0.95*self.stats[pop.populationID]['best'][self.generationNumber - self.migrationFrequency]:
+                logging.info('Population {} - change of type'.format(pop.populationID))
+                newType = pop.type
+                while newType == pop.type:
+                    newType = random.choice(['normal', 'absolute', 'empirical'])
+                if newType == 'normal':
+                    newPop = Population(pop.populationID, self.generationNumber, self.cities, pop.numberOfSpecimen, 'normal',
+                                     3, 0.1, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
+                                     pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion, pop.swapEff,
+                                     pop.insertEff, pop.scrambleEff, pop.inversionEff)
+                elif newType == 'absolute':
+                    newPop = Population(pop.populationID, self.generationNumber, self.cities, pop.numberOfSpecimen, 'absolute',
+                                     3, None, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
+                                     pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
+                                     pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
+                elif newType == 'empirical':
+                    newPop = Population(pop.populationID, self.generationNumber, self.cities, pop.numberOfSpecimen, 'empirical',
+                                     3, None, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
+                                     pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
+                                     pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
+            else:
+                newPop = pop
+            self.newPopulations.append(newPop)
+        self.populations = self.newPopulations
+        pass
+
     def receiveStats(self):
         for pop in self.populations:
             data = pop.getStats()
@@ -102,6 +139,7 @@ class Algorithm:
             self.stats[pop.populationID]['worst'].append(data['worst'])
             self.stats[pop.populationID]['stddev'].append(data['stddev'])
             self.stats[pop.populationID]['mutations'].append(data['mutations'])
+            self.stats[pop.populationID]['type'].append(data['type'])
             if pop.type == 'empirical':
                 self.stats[pop.populationID]['mutProbs'].append(data['mutProbs'])
 
@@ -143,6 +181,8 @@ class Algorithm:
         if self.type in ['static', 'dynamic']:
             self.plotMutations()
             self.plotMutProbs()
+        if self.type == 'dynamic':
+            self.plotTypes()
 
     def plotBest(self):
         plt.figure(figsize = [30, 30])
@@ -171,8 +211,6 @@ class Algorithm:
     def plotStddev(self):
         plt.figure(figsize=[30, 30])
         for i in range(8):
-            # stddevs = pd.Series(self.stats[i]['stddev'])
-            # stddevsRoll = stddevs.rolling(window = 5).mean()
             plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 5).mean(), label = '{} ({})'.
                      format(self.populations[i].populationID, self.populations[i].type),
                      color = colors[self.populations[i].type])
@@ -197,16 +235,42 @@ class Algorithm:
 
     def plotMutProbs(self):
         plt.figure(figsize = [30, 30])
-        swapProbs = pd.Series([self.stats[1]['mutProbs'][i][0] for i in range(len(self.stats[1]['mutProbs']))])
-        insertProbs = pd.Series([self.stats[1]['mutProbs'][i][1] for i in range(len(self.stats[1]['mutProbs']))])
-        scrambleProbs = pd.Series([self.stats[1]['mutProbs'][i][2] for i in range(len(self.stats[1]['mutProbs']))])
-        inversionProbs = pd.Series([self.stats[1]['mutProbs'][i][3] for i in range(len(self.stats[1]['mutProbs']))])
+        swapProbs = pd.Series([self.stats[1]['mutProbs'][i][0] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
+        insertProbs = pd.Series([self.stats[1]['mutProbs'][i][1] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
+        scrambleProbs = pd.Series([self.stats[1]['mutProbs'][i][2] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
+        inversionProbs = pd.Series([self.stats[1]['mutProbs'][i][3] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
         plt.plot(swapProbs.rolling(window = 5).mean(), label = 'swap')
         plt.plot(insertProbs.rolling(window = 5).mean(), label = 'insert')
         plt.plot(scrambleProbs.rolling(window = 5).mean(), label = 'scramble')
         plt.plot(inversionProbs.rolling(window = 5).mean(), label = 'inversion')
         plt.xlabel('Pokolenie')
         plt.ylabel('Prawdopodobieństwo mutacji')
+        plt.grid()
+        plt.legend()
+        plt.show()
+
+    def plotTypes(self):
+        plt.figure(figsize = [30, 30])
+        normalPops = []
+        absPops = []
+        empPops = []
+        for i in range(self.numberOfGenerations):
+            normalPops.append(0)
+            absPops.append(0)
+            empPops.append(0)
+            for j in range(8):
+                if self.stats[j]['type'][i] == 'normal':
+                    normalPops[i] += 1
+                elif self.stats[j]['type'][i] == 'absolute':
+                    absPops[i] += 1
+                elif self.stats[j]['type'][i] == 'empirical':
+                    empPops[i] += 1
+        plt.plot(normalPops, label = 'normal')
+        plt.plot(absPops, label = 'absolute')
+        plt.plot(empPops, label = 'empirical')
+        plt.ylim(bottom = 0)
+        plt.xlabel('Pokolenie')
+        plt.ylabel('Liczba populacji')
         plt.grid()
         plt.legend()
         plt.show()
@@ -223,6 +287,8 @@ class Algorithm:
             self.receiveStats()
             if it % self.migrationFrequency == 0 and it > 0:
                 self.migrate()
+                if self.type == 'dynamic':
+                    self.changeType()
             it += 1
         self.logOutData()
         self.plotOut()
@@ -230,6 +296,6 @@ class Algorithm:
 
 if __name__ == '__main__':
     cities_ = readData('test1')
-    alg = Algorithm('static', '1+2circle', 10, 10, cities_, 5)
+    alg = Algorithm('dynamic', 'ladder', 10, 10, cities_, 100)
     alg.run()
     pass

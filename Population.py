@@ -91,11 +91,12 @@ class Population:
             self.crossoverEmpirical()
 
     def crossoverNormal(self):
+        self.parents = self.parents[['solution', 'fitness']]
         for i in range(int(self.parents.shape[0] / 2)):
-            parent1 = self.parents.iloc[i, 1]
-            parent1Fitness = self.parents.iloc[i, 0]
-            parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
-            parent2Fitness = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 0]
+            parent1 = self.parents.iloc[i, 0]
+            parent1Fitness = self.parents.iloc[i, 1]
+            parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 0]
+            parent2Fitness = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
             crossMethod = random.choice(['pmx', 'ox', 'cx'])
             if crossMethod == 'pmx':
                 self.pmx += 1
@@ -126,9 +127,10 @@ class Population:
         pass
 
     def crossoverAbsolute(self):
+        self.parents = self.parents[['solution', 'fitness']]
         for i in range(int(self.parents.shape[0] / 2)):
-            parent1 = self.parents.iloc[i, 1]
-            parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
+            parent1 = self.parents.iloc[i, 0]
+            parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 0]
             child1 = crossoverOX(parent1, parent2)
             child2 = crossoverOX(parent2, parent1)
             self.childrenList.append(child1)
@@ -136,14 +138,17 @@ class Population:
         pass
 
     def crossoverEmpirical(self):
+        #self.parents = self.parents[['fitness', 'p_m', 'solution']]
+        if 'p_m' not in self.parents.columns:
+            self.parents.insert(1, 'p_m', np.zeros(self.parents.shape[0], dtype = np.float))
         for i in range(int(self.parents.shape[0] / 2)):
             parent1Params = self.parents.iloc[i, 1]
-            if type(parent1Params) is float:
+            if type(parent1Params) is not list:
                 parent1Params = [random.uniform(0.05, 0.15), random.uniform(0.05, 0.15), random.uniform(0.05, 0.15),
                                            random.uniform(0.05, 0.15)]
             parent1 = self.parents.iloc[i, 2]
             parent2Params = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
-            if type(parent2Params) is float:
+            if type(parent2Params) is not list:
                 parent2Params = [random.uniform(0.05, 0.15), random.uniform(0.05, 0.15), random.uniform(0.05, 0.15),
                                            random.uniform(0.05, 0.15)]
             parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 2]
@@ -236,6 +241,10 @@ class Population:
     def evaluate(self):
         if 'fitness' not in self.specimen.columns:
             self.specimen.insert(len(self.specimen.columns), 'fitness', np.zeros(self.specimen.shape[0], dtype = np.float))
+        if self.type in ['normal', 'absolute']:
+            self.specimen = self.specimen[['solution', 'fitness']]
+        elif self.type == 'empirical':
+            self.specimen = self.specimen[['solution', 'fitness', 'p_m']]
         for i in range(self.numberOfSpecimen):
             self.specimen.iloc[i, 1] = self.evaluateSingleSpeciman(self.specimen.iloc[i, 0])
         self.specimen.sort_values(by = 'fitness', inplace = True)
@@ -266,7 +275,7 @@ class Population:
     def getStats(self):
         stats = {'best': self.specimen['fitness'].min(), 'mean': self.specimen['fitness'].mean(),
                  'worst': self.specimen['fitness'].max(), 'stddev': self.specimen['fitness'].std(),
-                 'mutations': self.swap + self.insert + self.scramble + self.inversion}
+                 'mutations': self.swap + self.insert + self.scramble + self.inversion, 'type': self.type}
         if self.type == 'empirical':
             stats['mutProbs'] = (np.mean(self.specimen.iloc[:, 2][0]), np.mean(self.specimen.iloc[:, 2][1]),
                                  np.mean(self.specimen.iloc[:, 2][2]), np.mean(self.specimen.iloc[:, 2][3]))
