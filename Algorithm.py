@@ -35,7 +35,7 @@ class Algorithm:
     def initialize(self):
         if self.type == 'normal':
             for popNumber in range(8):
-                pop = Population(popNumber, 0, self.cities, 100, 'normal', 3, 0.2, 10, self.migrationSize, None)
+                pop = Population(popNumber, 0, self.cities, 100, 'normal', 5, 0.1, 10, self.migrationSize, None)
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
@@ -186,10 +186,15 @@ class Algorithm:
 
     def plotBest(self):
         plt.figure(figsize = [30, 30])
-        for i in range(8):
-            plt.plot(self.stats[i]['best'], label = '{} ({})'.
-                     format(self.populations[i].populationID, self.populations[i].type),
-                     color = colors[self.populations[i].type])
+        if self.type in ['normal', 'dynamic']:
+            for i in range(8):
+                plt.plot(self.stats[i]['best'], label='{}'.
+                         format(self.populations[i].populationID))
+        elif self.type == 'static':
+            for i in range(8):
+                plt.plot(self.stats[i]['best'], label = '{} ({})'.
+                         format(self.populations[i].populationID, self.populations[i].type),
+                         color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Najlepsza wartość funkcji celu')
         plt.grid()
@@ -198,10 +203,19 @@ class Algorithm:
 
     def plotMean(self):
         plt.figure(figsize=[30, 30])
-        for i in range(8):
-            plt.plot(self.stats[i]['mean'], label = '{} ({})'.
-                     format(self.populations[i].populationID, self.populations[i].type),
-                     color = colors[self.populations[i].type])
+        if self.type in ['normal', 'dynamic']:
+            for i in range(8):
+                plt.plot(self.stats[i]['mean'], label='{}'.
+                         format(self.populations[i].populationID))
+        elif self.type == 'static':
+            for i in range(8):
+                plt.plot(self.stats[i]['mean'], label = '{} ({})'.
+                         format(self.populations[i].populationID, self.populations[i].type),
+                         color = colors[self.populations[i].type])
+        # for i in range(8):
+        #     plt.plot(self.stats[i]['mean'], label = '{} ({})'.
+        #              format(self.populations[i].populationID, self.populations[i].type),
+        #              color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Średnia wartość funkcji celu')
         plt.grid()
@@ -210,10 +224,19 @@ class Algorithm:
 
     def plotStddev(self):
         plt.figure(figsize=[30, 30])
-        for i in range(8):
-            plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 5).mean(), label = '{} ({})'.
-                     format(self.populations[i].populationID, self.populations[i].type),
-                     color = colors[self.populations[i].type])
+        if self.type in ['normal', 'dynamic']:
+            for i in range(8):
+                plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 20).mean(), label='{}'.
+                         format(self.populations[i].populationID))
+        elif self.type == 'static':
+            for i in range(8):
+                plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 20).mean(), label = '{} ({})'.
+                         format(self.populations[i].populationID, self.populations[i].type),
+                         color = colors[self.populations[i].type])
+        # for i in range(8):
+        #     plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 10).mean(), label = '{} ({})'.
+        #              format(self.populations[i].populationID, self.populations[i].type),
+        #              color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Odchylenie standardowe wartości funkcji celu')
         plt.grid()
@@ -222,11 +245,17 @@ class Algorithm:
 
     def plotMutations(self):
         plt.figure(figsize=[30, 30])
-        for i in range(8):
-            mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
-            plt.plot(pd.Series(mutations).rolling(window = 5).mean(), label = '{} ({})'.
-                     format(self.populations[i].populationID, self.populations[i].type),
-                     color = colors[self.populations[i].type])
+        if self.type == 'static':
+            for i in range(8):
+                mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
+                plt.plot(pd.Series(mutations).rolling(window = 20).mean(), label = '{} ({})'.
+                         format(self.populations[i].populationID, self.populations[i].type),
+                         color = colors[self.populations[i].type])
+        elif self.type == 'dynamic':
+            for i in range(8):
+                mutations = [self.stats[i]['mutations'][j] - self.stats[i]['mutations'][j - 1] for j in range(1, len(self.stats[i]['mutations']))]
+                plt.plot(pd.Series(mutations).rolling(window = 20).mean(), label = '{}'.
+                         format(self.populations[i].populationID))
         plt.xlabel('Pokolenie')
         plt.ylabel('Liczba mutacji')
         plt.grid()
@@ -239,10 +268,10 @@ class Algorithm:
         insertProbs = pd.Series([self.stats[1]['mutProbs'][i][1] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
         scrambleProbs = pd.Series([self.stats[1]['mutProbs'][i][2] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
         inversionProbs = pd.Series([self.stats[1]['mutProbs'][i][3] for i in range(len(self.stats[1]['mutProbs']))]).fillna(method = 'ffill')
-        plt.plot(swapProbs.rolling(window = 5).mean(), label = 'swap')
-        plt.plot(insertProbs.rolling(window = 5).mean(), label = 'insert')
-        plt.plot(scrambleProbs.rolling(window = 5).mean(), label = 'scramble')
-        plt.plot(inversionProbs.rolling(window = 5).mean(), label = 'inversion')
+        plt.plot(swapProbs.rolling(window = 10).mean(), label = 'swap')
+        plt.plot(insertProbs.rolling(window = 10).mean(), label = 'insert')
+        plt.plot(scrambleProbs.rolling(window = 10).mean(), label = 'scramble')
+        plt.plot(inversionProbs.rolling(window = 10).mean(), label = 'inversion')
         plt.xlabel('Pokolenie')
         plt.ylabel('Prawdopodobieństwo mutacji')
         plt.grid()
@@ -295,7 +324,7 @@ class Algorithm:
 
 
 if __name__ == '__main__':
-    cities_ = readData('test1')
-    alg = Algorithm('dynamic', 'ladder', 10, 10, cities_, 100)
+    cities_ = readData('eil76')
+    alg = Algorithm('normal', '1+2circle', 10, 10, cities_, 200)
     alg.run()
     pass
