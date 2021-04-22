@@ -35,19 +35,19 @@ class Algorithm:
     def initialize(self):
         if self.type == 'normal':
             for popNumber in range(8):
-                pop = Population(popNumber, 0, self.cities, 100, 'normal', 5, 0.1, 10, self.migrationSize, None)
+                pop = Population(popNumber, 0, self.cities, 100, 'normal', 5, 0.05, 10, self.migrationSize, None)
                 pop.createInitialPopulation()
                 pop.evaluate()
                 self.populations.append(pop)
         elif self.type in ['static', 'dynamic']:
-            pop0 = Population(0, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
-            pop1 = Population(1, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
-            pop2 = Population(2, 0, self.cities, 100, 'normal', 3, 0.2, 10, self.migrationSize, None)
-            pop3 = Population(3, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
-            pop4 = Population(4, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
-            pop5 = Population(5, 0, self.cities, 100, 'normal', 3, 0.2, 10, self.migrationSize, None)
-            pop6 = Population(6, 0, self.cities, 100, 'absolute', 3, None, 10, self.migrationSize, None)
-            pop7 = Population(7, 0, self.cities, 100, 'empirical', 3, None, 10, self.migrationSize, None)
+            pop0 = Population(0, 0, self.cities, 100, 'absolute', 5, None, 10, self.migrationSize, None)
+            pop1 = Population(1, 0, self.cities, 100, 'empirical', 5, None, 10, self.migrationSize, None)
+            pop2 = Population(2, 0, self.cities, 100, 'normal', 5, 0.05, 10, self.migrationSize, None)
+            pop3 = Population(3, 0, self.cities, 100, 'absolute', 5, None, 10, self.migrationSize, None)
+            pop4 = Population(4, 0, self.cities, 100, 'empirical', 5, None, 10, self.migrationSize, None)
+            pop5 = Population(5, 0, self.cities, 100, 'normal', 5, 0.05, 10, self.migrationSize, None)
+            pop6 = Population(6, 0, self.cities, 100, 'absolute', 5, None, 10, self.migrationSize, None)
+            pop7 = Population(7, 0, self.cities, 100, 'empirical', 5, None, 10, self.migrationSize, None)
             self.populations = [pop0, pop1, pop2, pop3, pop4, pop5, pop6, pop7]
             for pop in self.populations:
                 pop.createInitialPopulation()
@@ -66,20 +66,12 @@ class Algorithm:
             j.join()
         self.newPopulations = []
         self.generationNumber += 1
-        #if self.type in ['normal', 'static']:
         for pop in retDict.values():
             newPop = Population(pop.populationID, self.generationNumber, cities_, pop.numberOfSpecimen, pop.type, pop.tournamentSize,
                                 pop.p_m, pop.eliteSize, pop.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
                                 pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion, pop.swapEff,
                                 pop.insertEff, pop.scrambleEff, pop.inversionEff)
             self.newPopulations.append(newPop)
-        # elif self.type == 'dynamic':
-        #     for pop in retDict.values():
-        #         if (self.generationNumber > self.migrationFrequency and
-        #                 pop.specimen['fitness'].min() >= self.stats[pop.populationID]['best'][self.generationNumber - self.migrationFrequency]):
-        #             logging.info('Population {} - change of type'.format(pop.populationID))
-        #
-
         self.populations = self.newPopulations
         self.populations.sort(key = lambda x: x.populationID)
         pass
@@ -212,10 +204,6 @@ class Algorithm:
                 plt.plot(self.stats[i]['mean'], label = '{} ({})'.
                          format(self.populations[i].populationID, self.populations[i].type),
                          color = colors[self.populations[i].type])
-        # for i in range(8):
-        #     plt.plot(self.stats[i]['mean'], label = '{} ({})'.
-        #              format(self.populations[i].populationID, self.populations[i].type),
-        #              color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Średnia wartość funkcji celu')
         plt.grid()
@@ -233,10 +221,6 @@ class Algorithm:
                 plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 20).mean(), label = '{} ({})'.
                          format(self.populations[i].populationID, self.populations[i].type),
                          color = colors[self.populations[i].type])
-        # for i in range(8):
-        #     plt.plot(pd.Series(self.stats[i]['stddev']).rolling(window = 10).mean(), label = '{} ({})'.
-        #              format(self.populations[i].populationID, self.populations[i].type),
-        #              color = colors[self.populations[i].type])
         plt.xlabel('Pokolenie')
         plt.ylabel('Odchylenie standardowe wartości funkcji celu')
         plt.grid()
@@ -324,7 +308,7 @@ class Algorithm:
 
 
 if __name__ == '__main__':
-    cities_ = readData('eil76')
-    alg = Algorithm('normal', '1+2circle', 10, 10, cities_, 200)
+    cities_ = readData('eil51')
+    alg = Algorithm('normal', 'ladder', 20, 10, cities_, 200)
     alg.run()
     pass

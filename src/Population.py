@@ -71,7 +71,7 @@ class Population:
         self.meanFitness = self.specimen['fitness'].mean()
         self.specimen.insert(len(self.specimen.columns), 'p_c', np.zeros(self.specimen.shape[0], dtype = np.float))
         for i in range(self.specimen.shape[0]):
-            self.specimen.iloc[i, -1] = 1 - 0.5*self.generationNumber/100 if self.specimen.iloc[i, 1] >= self.meanFitness else 1
+            self.specimen.iloc[i, -1] = 1 - 0.5*self.generationNumber/200 if self.specimen.iloc[i, 1] >= self.meanFitness else 1
         while self.parents.shape[0] < self.numberOfSpecimen - self.eliteSize:
             specimanNumber = int(random.random()*self.numberOfSpecimen)
             if random.random() < self.specimen.iloc[specimanNumber, -1]:
@@ -150,7 +150,7 @@ class Population:
             parent2Params = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 1]
             if type(parent2Params) is not list:
                 parent2Params = [random.uniform(0.05, 0.15), random.uniform(0.05, 0.15), random.uniform(0.05, 0.15),
-                                           random.uniform(0.05, 0.15)]
+                                           random.uniform(0.05, 0.5)]
             parent2 = self.parents.iloc[self.numberOfSpecimen - self.eliteSize - i - 1, 2]
             child1Params, child2Params = crossoverParams(parent1Params, parent2Params)
             child1 = crossoverOX(parent1, parent2)
@@ -203,7 +203,7 @@ class Population:
     def mutateAbsolute(self):
         for child in self.childrenList:
             fitness = self.evaluateSingleSpeciman(child)
-            p_m = 0.01 + 0.09*self.generationNumber/10 if fitness >= self.meanFitness else 0.01
+            p_m = 0.01 + 0.09*self.generationNumber/200 if fitness >= self.meanFitness else 0.01
             if random.random() < p_m:
                 self.inversion += 1
                 child = mutationInversion(child)
@@ -215,7 +215,7 @@ class Population:
         for child in self.childrenList:
             for param in child[1]:
                 if random.random() < param:
-                    param += random.uniform(-0.05, 0.05)
+                    param += random.uniform(-0.01, 0.01)
         for child in self.childrenList:
             mutType = random.choices(['swap', 'insert', 'scramble', 'inversion'], child[1])
             if mutType == ['swap']:
