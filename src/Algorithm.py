@@ -96,25 +96,42 @@ class Algorithm:
 
     def changeType(self):
         self.newPopulations = []
+        ds = [np.max([0, self.stats[pop.populationID]['best'][self.generationNumber - self.migrationFrequency]/pop.specimen['fitness'].min() - 1])
+              for pop in self.populations]
+        sumDs = np.sum(ds)
+        sumBests = 0
         for pop in self.populations:
-            if pop.specimen['fitness'].min() >= 0.95*self.stats[pop.populationID]['best'][self.generationNumber - self.migrationFrequency]:
+            sumBests += pop.specimen['fitness'].min()
+        qualitiesNormal = [ds[i]/sumDs + self.populations[i].specimen['fitness'].min()/sumBests for i in range(len(self.populations))
+                           if self.populations[i].type == 'normal']
+        qualitiesAbsolute = [ds[i] / sumDs + self.populations[i].specimen['fitness'].min() / sumBests for i in range(len(self.populations))
+                             if self.populations[i].type == 'absolute']
+        qualitiesEmpirical = [ds[i] / sumDs + self.populations[i].specimen['fitness'].min() / sumBests for i in range(len(self.populations))
+                           if self.populations[i].type == 'empirical']
+        qualityNormal = np.mean(qualitiesNormal)
+        qualityAbsolute = np.mean(qualitiesAbsolute)
+        qualityEmpirical = np.mean(qualitiesEmpirical)
+        for pop in self.populations:
+            improvement = pop.specimen['fitness'].min()/self.stats[pop.populationID]['best'][self.generationNumber - self.migrationFrequency]
+            changeProb = 10*improvement - 9 if improvement > 0.9 else 0
+            if random.random() < changeProb:
                 logging.info('Population {} - change of type'.format(pop.populationID))
-                newType = pop.type
+                newType = random.choices(['normal', 'absolute', 'empirical'], [qualityNormal, qualityAbsolute, qualityEmpirical])
                 while newType == pop.type:
-                    newType = random.choice(['normal', 'absolute', 'empirical'])
-                if newType == 'normal':
+                    newType = random.choices(['normal', 'absolute', 'empirical'], [qualityNormal, qualityAbsolute, qualityEmpirical])
+                if newType == ['normal']:
                     newPop = Population(pop.populationID, self.generationNumber, self.cities, pop.numberOfSpecimen, 'normal',
-                                     3, 0.1, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
+                                     5, 0.05, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
                                      pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion, pop.swapEff,
                                      pop.insertEff, pop.scrambleEff, pop.inversionEff)
-                elif newType == 'absolute':
+                elif newType == ['absolute']:
                     newPop = Population(pop.populationID, self.generationNumber, self.cities, pop.numberOfSpecimen, 'absolute',
-                                     3, None, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
+                                     5, None, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
                                      pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
                                      pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
-                elif newType == 'empirical':
+                elif newType == ['empirical']:
                     newPop = Population(pop.populationID, self.generationNumber, self.cities, pop.numberOfSpecimen, 'empirical',
-                                     3, None, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
+                                     5, None, 10, self.migrationSize, pop.specimen, pop.pmx, pop.cx, pop.ox, pop.pmxEff,
                                      pop.cxEff, pop.oxEff, pop.swap, pop.insert, pop.scramble, pop.inversion,
                                      pop.swapEff, pop.insertEff, pop.scrambleEff, pop.inversionEff)
             else:
@@ -136,7 +153,7 @@ class Algorithm:
                 self.stats[pop.populationID]['mutProbs'].append(data['mutProbs'])
 
     def setLogOutput(self):
-        path = sys.path[0] + "\\logs\\" + self.type + "\\"
+        path = os.path.dirname(os.getcwd()) + "\\logs\\" + self.type + "\\"
         fileName = str(datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')) + '.txt'
         logging.basicConfig(filename = path + fileName, filemode = 'w', level = logging.INFO)
         logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
@@ -298,10 +315,10 @@ class Algorithm:
             for pop in self.populations:
                 logging.info('Population: {}, best fitness: {}'.format(pop.populationID, pop.specimen.iloc[0, 1]))
             self.receiveStats()
-            if it % self.migrationFrequency == 0 and it > 0:
-                self.migrate()
+            if it % self.migrationFrequency == 0:
                 if self.type == 'dynamic':
                     self.changeType()
+                self.migrate()
             it += 1
         self.logOutData()
         self.plotOut()
@@ -309,6 +326,6 @@ class Algorithm:
 
 if __name__ == '__main__':
     cities_ = readData('eil51')
-    alg = Algorithm('normal', 'ladder', 20, 10, cities_, 200)
+    alg = Algorithm('dynamic', 'ladder', 10, 10, cities_, 100)
     alg.run()
     pass

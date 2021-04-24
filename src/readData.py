@@ -1,7 +1,9 @@
 import numpy as np
+import os
+
 def readData(fileName):
     cities = {}
-    fileName += '.txt'
+    fileName = os.path.join(os.path.dirname(os.getcwd()), 'examples\\') + fileName + '.txt'
     with open(fileName) as f:
         lines = f.readlines()
     for line in lines:
