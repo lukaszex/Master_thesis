@@ -64,6 +64,11 @@ def crossoverCX(parent1, parent2):
         pass
     return child
 
+def crossoverParams(parent1Params, parent2Params):
+    xpoint = random.choice([0, 1, 2])
+    child1Params = parent1Params[:xpoint] + parent2Params[xpoint:]
+    child2Params = parent2Params[:xpoint] + parent1Params[xpoint:]
+    return (child1Params, child2Params)
 
 if __name__ == '__main__':
     print(crossoverCX([4, 3, 6, 7, 5, 2, 1], [1, 2, 3, 4, 5, 6, 7]))
